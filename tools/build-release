@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import pathlib
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -23,37 +25,70 @@ INCLUDE = [
     "languages",
 ]
 
+REQUIRED_ENV = (
+    "WP_CORE_DIR",
+    "WP_TESTS_DIR",
+    "CB_BASE_SOURCE_DIR",
+    "CB_BASE_PLUGIN_FILE",
+    "CB_SNIPPETS_PLUGIN_FILE",
+    "WP_DB_NAME",
+    "WP_DB_USER",
+    "WP_DB_PASSWORD",
+    "WP_DB_HOST",
+)
+
+FIXED_ZIP_TIME = (1980, 1, 1, 0, 0, 0)
+
+
 def fail(message: str) -> None:
     print(f"[release] ERROR: {message}", file=sys.stderr)
     raise SystemExit(1)
 
-def run_checks() -> None:
-    script = ROOT / "tests/bin/run-checks.sh"
-    if not script.is_file():
-        fail("tests/bin/run-checks.sh is missing")
-    subprocess.run(["bash", str(script)], cwd=ROOT, check=True)
+
+def run(command: list[str], label: str, quiet: bool = False) -> None:
+    print(f"[release] gate: {label}", flush=True)
+    result = subprocess.run(command, cwd=ROOT, capture_output=quiet, text=True)
+    if result.returncode:
+        if quiet:
+            print(result.stdout or "", end="")
+            print(result.stderr or "", end="", file=sys.stderr)
+        fail(f"{label} failed (exit {result.returncode}).")
+
 
 def version() -> str:
     source = PLUGIN_FILE.read_text(encoding="utf-8")
-    match = re.search(r"^ \* Version:\s*([^\s]+)\s*$", source, re.MULTILINE)
-    if not match:
-        fail("plugin Version header not found")
-    return match.group(1)
+    header = re.search(r"^ \* Version:\s*([^\s]+)\s*$", source, re.MULTILINE)
+    constant = re.search(r"define\(\s*'CB_SNIPPETS_VERSION'\s*,\s*'([^']+)'\s*\);", source)
+    if not header or not constant:
+        fail("plugin Version header and CB_SNIPPETS_VERSION are both required")
+    if header.group(1) != constant.group(1):
+        fail(
+            "version mismatch: plugin header "
+            f"{header.group(1)!r} != CB_SNIPPETS_VERSION {constant.group(1)!r}"
+        )
+    return header.group(1)
 
-def files() -> list[pathlib.Path]:
+
+def files(root: pathlib.Path = ROOT) -> list[pathlib.Path]:
     selected: list[pathlib.Path] = []
     for item in INCLUDE:
-        path = ROOT / item
+        path = root / item
         if not path.exists():
             if item == "languages":
                 continue
             fail(f"required release payload missing: {item}")
+        if path.is_symlink():
+            fail(f"release payload may not be a symlink: {item}")
         if path.is_file():
             selected.append(path)
             continue
-        selected.extend(p for p in path.rglob("*") if p.is_file())
+        for candidate in path.rglob("*"):
+            if candidate.is_symlink():
+                fail(f"release tree may not contain symlinks: {candidate.relative_to(root)}")
+            if candidate.is_file():
+                selected.append(candidate)
 
-    out = sorted(
+    return sorted(
         {
             p
             for p in selected
@@ -61,31 +96,154 @@ def files() -> list[pathlib.Path]:
             and "dist" not in p.parts
             and "__pycache__" not in p.parts
         },
-        key=lambda p: p.relative_to(ROOT).as_posix(),
+        key=lambda p: p.relative_to(root).as_posix(),
     )
-    return out
+
+
+def runtime_hashes(root: pathlib.Path = ROOT) -> dict[str, str]:
+    return {
+        path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in files(root)
+    }
+
+
+def tree_hashes(root: pathlib.Path) -> dict[str, str]:
+    excluded_parts = {".git", "vendor", "dist", "__pycache__"}
+    excluded_names = {".phpunit.result.cache"}
+    result: dict[str, str] = {}
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(root)
+        if any(part in excluded_parts for part in relative.parts) or path.name in excluded_names:
+            continue
+        result[relative.as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return result
+
+
+def preflight(expected: dict[str, str]) -> None:
+    for tool in ("php", "node", "bash", "unzip"):
+        if shutil.which(tool) is None:
+            fail(f"required tool is missing: {tool}")
+
+    for relative in (
+        "tests/bin/run-checks.sh",
+        "vendor/bin/phpunit",
+        "vendor/autoload.php",
+        "phpunit.xml.dist",
+    ):
+        if not (ROOT / relative).is_file():
+            fail(f"required release gate/dependency is missing: {relative}")
+
+    for key in REQUIRED_ENV:
+        if not os.environ.get(key):
+            fail(f"{key} is required for the isolated WordPress integration gate")
+
+    wp_core = pathlib.Path(os.environ["WP_CORE_DIR"]).resolve()
+    wp_tests = pathlib.Path(os.environ["WP_TESTS_DIR"]).resolve()
+    base_source = pathlib.Path(os.environ["CB_BASE_SOURCE_DIR"]).resolve()
+    base_plugin = pathlib.Path(os.environ["CB_BASE_PLUGIN_FILE"]).resolve()
+    snippets_plugin = pathlib.Path(os.environ["CB_SNIPPETS_PLUGIN_FILE"]).resolve()
+
+    for path in (wp_core / "wp-load.php", wp_tests / "includes/bootstrap.php"):
+        if not path.is_file():
+            fail(f"WordPress test environment is incomplete: {path}")
+
+    if not (base_source / "core-blueprint.php").is_file():
+        fail("CB_BASE_SOURCE_DIR must point to the Core Blueprint Base repository root")
+    if base_plugin.name != "core-blueprint.php" or base_plugin.parent.name != "core-blueprint":
+        fail("CB_BASE_PLUGIN_FILE must identify core-blueprint/core-blueprint.php")
+    if snippets_plugin.name != "core-blueprint-snippets.php" or snippets_plugin.parent.name != CANONICAL_ROOT:
+        fail("CB_SNIPPETS_PLUGIN_FILE must identify core-blueprint-snippets/core-blueprint-snippets.php")
+    if not base_plugin.is_file() or not snippets_plugin.is_file():
+        fail("isolated WordPress plugin test copies are incomplete")
+
+    if tree_hashes(base_source) != tree_hashes(base_plugin.parent):
+        fail("Core Blueprint Base test copy differs from CB_BASE_SOURCE_DIR; refresh it before building")
+    if runtime_hashes(snippets_plugin.parent) != expected:
+        fail("Snippets WordPress test copy differs from release source; refresh it before building")
+
+    run(
+        [
+            "php",
+            "-r",
+            'if (PHP_VERSION_ID < 80400) { fwrite(STDERR, "PHP 8.4+ required.\\n"); exit(1); } '
+            'foreach (["dom", "xml", "xmlwriter", "mbstring", "mysqli", "sodium"] as $extension) '
+            '{ if (!extension_loaded($extension)) { fwrite(STDERR, "Missing PHP extension: " . $extension . "\\n"); exit(1); } }',
+        ],
+        "PHP baseline and integration extensions",
+    )
+
+    run(["bash", "tests/bin/run-checks.sh"], "static, extraction, translation and release-tooling checks")
+    run(
+        [
+            "php",
+            "vendor/bin/phpunit",
+            "--testsuite",
+            "integration",
+            "--do-not-cache-result",
+            "--fail-on-skipped",
+            "--fail-on-incomplete",
+        ],
+        "WordPress integration",
+    )
+
+    if runtime_hashes(ROOT) != expected:
+        fail("Snippets release source changed during validation")
+    if runtime_hashes(snippets_plugin.parent) != expected:
+        fail("Snippets WordPress test copy changed during validation")
+    if tree_hashes(base_source) != tree_hashes(base_plugin.parent):
+        fail("Core Blueprint Base test copy changed during validation")
+
+
+def verify_archive(path: pathlib.Path, expected: dict[str, str]) -> None:
+    with zipfile.ZipFile(path) as archive:
+        names = archive.namelist()
+        required = {f"{CANONICAL_ROOT}/{relative}" for relative in expected}
+        if len(names) != len(required) or set(names) != required:
+            fail("archive entries differ from the verified runtime manifest")
+        if archive.testzip() is not None:
+            fail("ZIP integrity verification failed")
+        for relative, digest in expected.items():
+            payload = archive.read(f"{CANONICAL_ROOT}/{relative}")
+            if hashlib.sha256(payload).hexdigest() != digest:
+                fail(f"archive bytes differ from verified source: {relative}")
+
 
 def build(output_dir: pathlib.Path) -> pathlib.Path:
-    run_checks()
     release_version = version()
     payload = files()
+    expected = runtime_hashes(ROOT)
+
+    preflight(expected)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     destination = output_dir / f"core-blueprint-snippets-{release_version}.zip"
-    if destination.exists():
-        destination.unlink()
+    checksum = output_dir / f"core-blueprint-snippets-{release_version}.zip.sha256"
 
-    fixed_time = (2026, 1, 1, 0, 0, 0)
-    with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
-        for source in payload:
-            relative = source.relative_to(ROOT).as_posix()
-            arcname = f"{CANONICAL_ROOT}/{relative}"
-            info = zipfile.ZipInfo(arcname, fixed_time)
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = (0o100644 & 0xFFFF) << 16
-            archive.writestr(info, source.read_bytes())
+    with tempfile.TemporaryDirectory(prefix=".cb-snippets-release-", dir=output_dir) as temporary:
+        pending_zip = pathlib.Path(temporary) / destination.name
+        pending_checksum = pathlib.Path(temporary) / checksum.name
 
-    digest = hashlib.sha256(destination.read_bytes()).hexdigest()
+        with zipfile.ZipFile(pending_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+            for source in payload:
+                relative = source.relative_to(ROOT).as_posix()
+                arcname = f"{CANONICAL_ROOT}/{relative}"
+                info = zipfile.ZipInfo(arcname, FIXED_ZIP_TIME)
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.create_system = 3
+                info.external_attr = (0o100644 & 0xFFFF) << 16
+                archive.writestr(info, source.read_bytes())
+
+        verify_archive(pending_zip, expected)
+        if runtime_hashes(ROOT) != expected:
+            fail("release source changed during packaging")
+
+        digest = hashlib.sha256(pending_zip.read_bytes()).hexdigest()
+        pending_checksum.write_text(f"{digest}  {destination.name}\n", encoding="utf-8")
+        os.replace(pending_zip, destination)
+        os.replace(pending_checksum, checksum)
+
     print(f"[release] version: {release_version}")
     print(f"[release] files: {len(payload)}")
     print(f"[release] canonical root: {CANONICAL_ROOT}/")
@@ -93,11 +251,16 @@ def build(output_dir: pathlib.Path) -> pathlib.Path:
     print(f"[release] sha256: {digest}")
     return destination
 
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", default="dist")
     args = parser.parse_args()
-    build((ROOT / args.output_dir).resolve() if not pathlib.Path(args.output_dir).is_absolute() else pathlib.Path(args.output_dir))
+    output_dir = pathlib.Path(args.output_dir)
+    if not output_dir.is_absolute():
+        output_dir = (ROOT / output_dir).resolve()
+    build(output_dir)
+
 
 if __name__ == "__main__":
     main()
