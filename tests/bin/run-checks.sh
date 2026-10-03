@@ -9,6 +9,7 @@ while IFS= read -r -d '' file; do
 done < <(find . -type f -name '*.php' -not -path './dist/*' -print0)
 
 php tests/snippets-extraction-regression.php
+php tools/check-translations.php
 
 if command -v node >/dev/null 2>&1; then
   node --check assets/js/features/snippets.js
