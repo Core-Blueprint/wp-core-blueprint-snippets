@@ -28,9 +28,7 @@ $paths = $root . '/src/Paths.php';
 $settings = $root . '/src/Settings.php';
 $actions = $root . '/src/Admin/Actions.php';
 $uninstall = $root . '/uninstall.php';
-$module_state = $root . '/src/ModuleState.php';
-
-foreach ( [ $plugin, $bootstrap, $paths, $settings, $actions, $uninstall, $module_state ] as $required ) {
+foreach ( [ $plugin, $bootstrap, $paths, $settings, $actions, $uninstall ] as $required ) {
 	if ( ! is_file( $required ) ) {
 		fail_snippets_contract( "required file missing: {$required}" );
 	}
@@ -39,10 +37,14 @@ foreach ( [ $plugin, $bootstrap, $paths, $settings, $actions, $uninstall, $modul
 require_contains( $plugin, 'Requires Plugins:  core-blueprint' );
 require_contains( $plugin, "add_action( 'plugins_loaded'" );
 require_contains( $plugin, "Bootstrap::class, 'boot' ], 0" );
+require_contains( $plugin, "Bootstrap::class, 'activate' ]" );
 require_contains( $bootstrap, "class_exists( '\\\\CoreBlueprint\\\\Core\\\\Snippets\\\\Bootstrap' )" );
 require_contains( $bootstrap, "'id'            => 'core-blueprint-snippets'" );
 require_contains( $bootstrap, "'requires_api'  => '1.2'" );
-require_contains( $bootstrap, "'state'      => ModuleState::class" );
+require_contains( $bootstrap, 'public static function activate(): void' );
+require_contains( $bootstrap, "State::set_enabled( true, 'plugin:activation' )" );
+require_not_contains( $bootstrap, 'core_blueprint_module_activation_definitions' );
+require_not_contains( $bootstrap, 'register_activation_definition' );
 require_contains( $bootstrap, "PageRegistry::register(" );
 require_not_contains( $bootstrap, 'register_base(' );
 
@@ -50,7 +52,9 @@ require_contains( $paths, "WP_CONTENT_DIR ) . 'cb-snippets'" );
 require_contains( $settings, "public const OPTION = 'cb_core_snippets_settings'" );
 require_contains( $actions, "admin_post_cb_core_snippets_save" );
 require_contains( $actions, "admin_post_cb_core_snippets_import" );
-require_contains( $module_state, 'implements ModuleStateInterface' );
+if ( is_file( $root . '/src/ModuleState.php' ) ) {
+	fail_snippets_contract( 'obsolete ModuleState adapter must not be packaged' );
+}
 
 require_contains( $uninstall, "delete_option( 'cb_core_snippets_settings' )" );
 require_contains( $uninstall, "WP_CONTENT_DIR ) . 'cb-snippets'" );
