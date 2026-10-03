@@ -11,7 +11,7 @@ declare(strict_types=1);
  * @since   1.0.0
  */
 
-namespace CoreBlueprint\Core\Snippets;
+namespace CoreBlueprint\Snippets;
 
 use CoreBlueprint\Core\Log\AuditLog;
 use CoreBlueprint\Core\Modules\ModuleStateInterface;

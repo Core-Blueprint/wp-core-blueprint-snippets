@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace CoreBlueprint\Core\Snippets\Validation;
+namespace CoreBlueprint\Snippets\Validation;
 
 defined( 'ABSPATH' ) || exit;
 
