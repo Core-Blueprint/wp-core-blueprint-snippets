@@ -47,6 +47,7 @@ final class Bootstrap {
 		add_action( 'core_blueprint_register_pages', [ self::class, 'register_page' ] );
 		add_action( 'core_blueprint_hud_register_items', [ self::class, 'register_hud_item' ] );
 		add_action( 'core_blueprint_hud_register_items', [ self::class, 'register_hud_quick_action' ] );
+		add_action( 'init', [ self::class, 'load_textdomain' ], 0 );
 		add_action( 'init', [ self::class, 'register_capability_filter' ], 1 );
 
 		if ( RequestContext::is_admin_post() ) {
@@ -162,6 +163,14 @@ final class Bootstrap {
 			'icon'       => 'plus-alt2',
 			'module'     => 'snippets',
 		] );
+	}
+
+	public static function load_textdomain(): void {
+		load_plugin_textdomain(
+			'core-blueprint-snippets',
+			false,
+			dirname( CB_SNIPPETS_BASENAME ) . '/languages'
+		);
 	}
 
 	public static function register_capability_filter(): void {
