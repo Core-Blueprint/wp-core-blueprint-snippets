@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use CoreBlueprint\Core\Permissions\PrivilegedAccessRegistry;
 use CoreBlueprint\Snippets\Admin\Actions;
+use CoreBlueprint\Snippets\Admin\Page;
 use CoreBlueprint\Snippets\State;
 
 final class CB_Snippets_Test_Termination extends RuntimeException {
@@ -67,6 +68,20 @@ final class CB_Snippets_Disabled_Surface_Contract_Test extends WP_UnitTestCase {
 			self::assertNotFalse(
 				has_action( 'admin_post_cb_core_snippets_export', [ Actions::class, 'export' ] )
 			);
+
+			ob_start();
+			( new Page() )->render();
+			$list_html = (string) ob_get_clean();
+			self::assertStringContainsString( 'Snippet runtime is disabled.', $list_html );
+			self::assertStringNotContainsString( '>Add snippet<', $list_html );
+
+			$_GET['tab'] = 'import-export';
+			ob_start();
+			( new Page() )->render();
+			$transfer_html = (string) ob_get_clean();
+			self::assertStringContainsString( '>Export all snippets<', $transfer_html );
+			self::assertStringNotContainsString( '>Import snippets<', $transfer_html );
+			$_GET = [];
 		} finally {
 			$_POST = [];
 			$_REQUEST = [];
