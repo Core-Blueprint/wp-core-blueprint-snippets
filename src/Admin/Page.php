@@ -71,6 +71,9 @@ final class Page implements PageContract {
 			<?php if ( is_array( $result ) && ! empty( $result['message'] ) ) : ?>
 				<div class="notice <?php echo 'error' === ( $result['type'] ?? '' ) ? 'notice-error' : ( 'warning' === ( $result['type'] ?? '' ) ? 'notice-warning' : 'notice-success' ); ?> inline"><p><?php echo esc_html( (string) $result['message'] ); ?></p></div>
 			<?php endif; ?>
+			<?php if ( ! State::is_enabled() ) : ?>
+				<div class="notice notice-warning inline"><p><strong><?php esc_html_e( 'Snippet runtime is disabled.', 'core-blueprint-snippets' ); ?></strong></p></div>
+			<?php endif; ?>
 			<?php if ( SafeMode::is_active() ) : ?>
 				<div class="notice notice-warning inline"><p><strong><?php esc_html_e( 'Emergency safe mode is active.', 'core-blueprint-snippets' ); ?></strong> <?php esc_html_e( 'All snippets are suppressed by CB_CORE_DISABLE_SNIPPETS, regardless of their saved state.', 'core-blueprint-snippets' ); ?></p></div>
 			<?php endif; ?>
@@ -95,7 +98,7 @@ final class Page implements PageContract {
 			<div class="cb-snippets-toolbar__status">
 				<?php echo StatusUi::render( State::is_enabled() ? 'active' : 'idle', State::is_enabled() ? __( 'Runtime enabled', 'core-blueprint-snippets' ) : __( 'Runtime disabled', 'core-blueprint-snippets' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			</div>
-			<?php if ( Authorization::can_mutate() ) : ?>
+			<?php if ( State::is_enabled() && Authorization::can_mutate() ) : ?>
 				<a class="button button-primary cb-core-button cb-core-button--primary" href="<?php echo esc_url( $add_url ); ?>"><?php esc_html_e( 'Add snippet', 'core-blueprint-snippets' ); ?></a>
 			<?php endif; ?>
 		</div>
@@ -245,7 +248,7 @@ final class Page implements PageContract {
 			</section>
 
 			<div class="cb-core-actions">
-				<?php if ( Authorization::can_mutate() ) : ?>
+				<?php if ( State::is_enabled() && Authorization::can_mutate() ) : ?>
 					<button type="submit" class="button button-primary cb-core-button cb-core-button--primary"><?php esc_html_e( 'Save snippet', 'core-blueprint-snippets' ); ?></button>
 				<?php endif; ?>
 				<a class="button cb-core-button cb-core-button--secondary" href="<?php echo esc_url( admin_url( 'admin.php?page=' . self::SLUG . '&tab=snippets' ) ); ?>"><?php esc_html_e( 'Back to snippets', 'core-blueprint-snippets' ); ?></a>
@@ -299,7 +302,7 @@ final class Page implements PageContract {
 			<section class="cb-snippets-section">
 				<h2><?php esc_html_e( 'Import', 'core-blueprint-snippets' ); ?></h2>
 				<p><?php esc_html_e( 'Accepted formats: Core Blueprint Snippets JSON and Fluent Snippets JSON. Imported code never becomes active automatically.', 'core-blueprint-snippets' ); ?></p>
-				<?php if ( Authorization::can_mutate() ) : ?>
+				<?php if ( State::is_enabled() && Authorization::can_mutate() ) : ?>
 				<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="cb-core-form-scope">
 					<input type="hidden" name="action" value="cb_core_snippets_import" />
 					<?php wp_nonce_field( 'cb_core_snippets_import' ); ?>
@@ -326,7 +329,7 @@ final class Page implements PageContract {
 	}
 
 	private function render_row_action( string $action, string $nonce, string $id, string $label, bool $danger = false, string $title = '' ): void {
-		if ( ! Authorization::can_mutate() ) {
+		if ( ! State::is_enabled() || ! Authorization::can_mutate() ) {
 			return;
 		}
 		?>
