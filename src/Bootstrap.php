@@ -15,6 +15,24 @@ defined( 'ABSPATH' ) || exit;
 final class Bootstrap {
 	private static bool $booted = false;
 
+
+	/**
+	 * WordPress plugin activation is the single public Snippets lifecycle.
+	 *
+	 * Individual snippets retain their own enabled state. The internal subsystem
+	 * flag exists only as a fail-closed runtime guard and is synchronized here.
+	 */
+	public static function activate(): void {
+		if ( State::is_enabled() ) {
+			if ( ! Repository::rebuild_index() ) {
+				throw new \RuntimeException( 'Core Blueprint Snippets runtime index could not be rebuilt during activation.' );
+			}
+			return;
+		}
+
+		State::set_enabled( true, 'plugin:activation' );
+	}
+
 	public static function boot(): void {
 		if ( self::$booted ) {
 			return;
@@ -42,7 +60,6 @@ final class Bootstrap {
 		Runtime::boot();
 
 		add_action( 'core_blueprint_register_extensions', [ self::class, 'register_extension' ] );
-		add_filter( 'core_blueprint_module_activation_definitions', [ self::class, 'register_activation_definition' ] );
 		add_filter( 'core_blueprint_module_status_definitions', [ self::class, 'register_status_definition' ] );
 		add_action( 'core_blueprint_register_pages', [ self::class, 'register_page' ] );
 		add_action( 'core_blueprint_hud_register_items', [ self::class, 'register_hud_item' ] );
@@ -68,14 +85,6 @@ final class Bootstrap {
 			'menu_url'      => admin_url( 'admin.php?page=' . Page::SLUG ),
 			'status_id'     => 'snippets',
 		] );
-	}
-
-	public static function register_activation_definition( array $definitions ): array {
-		$definitions['snippets'] = [
-			'state'      => ModuleState::class,
-			'capability' => Authorization::MANAGE_CAPABILITY,
-		];
-		return $definitions;
 	}
 
 	public static function register_status_definition( array $definitions ): array {
