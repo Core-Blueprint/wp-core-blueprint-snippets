@@ -88,10 +88,6 @@ final class Bootstrap {
 	}
 
 	public static function register_page(): void {
-		if ( ! State::is_enabled() ) {
-			return;
-		}
-
 		PageRegistry::register(
 			new Page(),
 			[
@@ -150,7 +146,7 @@ final class Bootstrap {
 	}
 
 	public static function register_hud_quick_action( string $registry ): void {
-		if ( ! Authorization::can_mutate() || ! class_exists( $registry ) ) {
+		if ( ! State::is_enabled() || ! Authorization::can_mutate() || ! class_exists( $registry ) ) {
 			return;
 		}
 		$registry::add_item( [
