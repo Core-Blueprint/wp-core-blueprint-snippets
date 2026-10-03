@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import hashlib
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+import zipfile
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+PLUGIN_FILE = ROOT / "core-blueprint-snippets.php"
+CANONICAL_ROOT = "core-blueprint-snippets"
+
+INCLUDE = [
+    "core-blueprint-snippets.php",
+    "uninstall.php",
+    "README.md",
+    "src",
+    "assets",
+    "languages",
+]
+
+def fail(message: str) -> None:
+    print(f"[release] ERROR: {message}", file=sys.stderr)
+    raise SystemExit(1)
+
+def run_checks() -> None:
+    script = ROOT / "tests/bin/run-checks.sh"
+    if not script.is_file():
+        fail("tests/bin/run-checks.sh is missing")
+    subprocess.run(["bash", str(script)], cwd=ROOT, check=True)
+
+def version() -> str:
+    source = PLUGIN_FILE.read_text(encoding="utf-8")
+    match = re.search(r"^ \* Version:\s*([^\s]+)\s*$", source, re.MULTILINE)
+    if not match:
+        fail("plugin Version header not found")
+    return match.group(1)
+
+def files() -> list[pathlib.Path]:
+    selected: list[pathlib.Path] = []
+    for item in INCLUDE:
+        path = ROOT / item
+        if not path.exists():
+            if item == "languages":
+                continue
+            fail(f"required release payload missing: {item}")
+        if path.is_file():
+            selected.append(path)
+            continue
+        selected.extend(p for p in path.rglob("*") if p.is_file())
+
+    out = sorted(
+        {
+            p
+            for p in selected
+            if ".git" not in p.parts
+            and "dist" not in p.parts
+            and "__pycache__" not in p.parts
+        },
+        key=lambda p: p.relative_to(ROOT).as_posix(),
+    )
+    return out
+
+def build(output_dir: pathlib.Path) -> pathlib.Path:
+    run_checks()
+    release_version = version()
+    payload = files()
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    destination = output_dir / f"core-blueprint-snippets-{release_version}.zip"
+    if destination.exists():
+        destination.unlink()
+
+    fixed_time = (2026, 1, 1, 0, 0, 0)
+    with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for source in payload:
+            relative = source.relative_to(ROOT).as_posix()
+            arcname = f"{CANONICAL_ROOT}/{relative}"
+            info = zipfile.ZipInfo(arcname, fixed_time)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = (0o100644 & 0xFFFF) << 16
+            archive.writestr(info, source.read_bytes())
+
+    digest = hashlib.sha256(destination.read_bytes()).hexdigest()
+    print(f"[release] version: {release_version}")
+    print(f"[release] files: {len(payload)}")
+    print(f"[release] canonical root: {CANONICAL_ROOT}/")
+    print(f"[release] zip: {destination}")
+    print(f"[release] sha256: {digest}")
+    return destination
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-dir", default="dist")
+    args = parser.parse_args()
+    build((ROOT / args.output_dir).resolve() if not pathlib.Path(args.output_dir).is_absolute() else pathlib.Path(args.output_dir))
+
+if __name__ == "__main__":
+    main()
