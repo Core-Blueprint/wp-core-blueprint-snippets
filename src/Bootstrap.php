@@ -9,6 +9,7 @@ use CoreBlueprint\Core\RequestContext;
 use CoreBlueprint\Snippets\Admin\Actions;
 use CoreBlueprint\Snippets\Admin\Assets;
 use CoreBlueprint\Snippets\Admin\Page;
+use CoreBlueprint\Snippets\Admin\SettingsPage;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -58,6 +59,7 @@ final class Bootstrap {
 		// Runtime registration stays synchronous so enabled PHP snippets may
 		// intentionally target plugins_loaded, matching the embedded Base runtime.
 		Runtime::boot();
+		SettingsPage::init();
 
 		add_action( 'core_blueprint_register_extensions', [ self::class, 'register_extension' ] );
 		add_filter( 'core_blueprint_module_status_definitions', [ self::class, 'register_status_definition' ] );
