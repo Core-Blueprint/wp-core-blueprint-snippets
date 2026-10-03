@@ -12,6 +12,33 @@ $base = rtrim( $base, "/\\" );
 
 $domain = 'core-blueprint-snippets';
 $locales = [ 'nl_NL', 'de_DE', 'fr_FR', 'es_ES', 'it_IT', 'pt_PT' ];
+$extension_translations = [
+	'nl_NL' => [
+		'Core Blueprint Snippets requires Core Blueprint Base with Distribution API 1.2 or newer.' => 'Core Blueprint Snippets vereist Core Blueprint Base met Distribution API 1.2 of nieuwer.',
+		'Core Blueprint Snippets is installed and waiting for the Core Blueprint Base update that removes the embedded Snippets runtime.' => 'Core Blueprint Snippets is geïnstalleerd en wacht op de Core Blueprint Base-update die de ingebouwde Snippets-runtime verwijdert.',
+	],
+	'de_DE' => [
+		'Core Blueprint Snippets requires Core Blueprint Base with Distribution API 1.2 or newer.' => 'Core Blueprint Snippets erfordert Core Blueprint Base mit Distribution API 1.2 oder neuer.',
+		'Core Blueprint Snippets is installed and waiting for the Core Blueprint Base update that removes the embedded Snippets runtime.' => 'Core Blueprint Snippets ist installiert und wartet auf das Core Blueprint Base-Update, das die integrierte Snippets-Runtime entfernt.',
+	],
+	'fr_FR' => [
+		'Core Blueprint Snippets requires Core Blueprint Base with Distribution API 1.2 or newer.' => 'Core Blueprint Snippets nécessite Core Blueprint Base avec Distribution API 1.2 ou une version plus récente.',
+		'Core Blueprint Snippets is installed and waiting for the Core Blueprint Base update that removes the embedded Snippets runtime.' => 'Core Blueprint Snippets est installé et attend la mise à jour de Core Blueprint Base qui supprime le runtime Snippets intégré.',
+	],
+	'es_ES' => [
+		'Core Blueprint Snippets requires Core Blueprint Base with Distribution API 1.2 or newer.' => 'Core Blueprint Snippets requiere Core Blueprint Base con Distribution API 1.2 o posterior.',
+		'Core Blueprint Snippets is installed and waiting for the Core Blueprint Base update that removes the embedded Snippets runtime.' => 'Core Blueprint Snippets está instalado y espera la actualización de Core Blueprint Base que elimina el runtime integrado de Snippets.',
+	],
+	'it_IT' => [
+		'Core Blueprint Snippets requires Core Blueprint Base with Distribution API 1.2 or newer.' => 'Core Blueprint Snippets richiede Core Blueprint Base con Distribution API 1.2 o successiva.',
+		'Core Blueprint Snippets is installed and waiting for the Core Blueprint Base update that removes the embedded Snippets runtime.' => 'Core Blueprint Snippets è installato e attende l\'aggiornamento di Core Blueprint Base che rimuove il runtime Snippets integrato.',
+	],
+	'pt_PT' => [
+		'Core Blueprint Snippets requires Core Blueprint Base with Distribution API 1.2 or newer.' => 'Core Blueprint Snippets requer o Core Blueprint Base com a Distribution API 1.2 ou posterior.',
+		'Core Blueprint Snippets is installed and waiting for the Core Blueprint Base update that removes the embedded Snippets runtime.' => 'Core Blueprint Snippets está instalado e aguarda a atualização do Core Blueprint Base que remove o runtime Snippets integrado.',
+	],
+];
+
 $functions = [
 	'__' => [ 'msg' => 0, 'domain' => 1 ],
 	'_e' => [ 'msg' => 0, 'domain' => 1 ],
@@ -186,11 +213,15 @@ foreach ( $locales as $locale ) {
 	$messages = [];
 	$missing = [];
 	foreach ( $source as $key => $entry ) {
-		if ( ! array_key_exists( $key, $base_catalog['messages'] ) ) {
-			$missing[] = $key;
+		if ( array_key_exists( $key, $base_catalog['messages'] ) ) {
+			$messages[ $key ] = $base_catalog['messages'][ $key ];
 			continue;
 		}
-		$messages[ $key ] = $base_catalog['messages'][ $key ];
+		if ( isset( $extension_translations[ $locale ][ $key ] ) ) {
+			$messages[ $key ] = $extension_translations[ $locale ][ $key ];
+			continue;
+		}
+		$missing[] = $key;
 	}
 	if ( [] !== $missing ) {
 		fwrite( STDERR, "[translations] ERROR: {$locale} missing " . count( $missing ) . " Snippets translations.\n" );
