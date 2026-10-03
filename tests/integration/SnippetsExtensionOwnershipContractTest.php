@@ -1,24 +1,36 @@
 <?php
 declare(strict_types=1);
 
-use CoreBlueprint\Core\Modules\ModuleStateInterface;
 use CoreBlueprint\Snippets\Admin\Page;
 use CoreBlueprint\Snippets\Authorization;
 use CoreBlueprint\Snippets\Bootstrap;
-use CoreBlueprint\Snippets\ModuleState;
 use CoreBlueprint\Snippets\State;
 use CoreBlueprint\Snippets\Status;
 
 final class CB_Snippets_Extension_Ownership_Contract_Test extends WP_UnitTestCase {
 
-	public function test_module_activation_definition_is_extension_owned(): void {
-		$definitions = Bootstrap::register_activation_definition( [] );
+	public function test_plugin_activation_is_the_single_public_runtime_lifecycle(): void {
+		$initial = State::is_enabled();
 
-		self::assertArrayHasKey( 'snippets', $definitions );
-		self::assertSame( ModuleState::class, $definitions['snippets']['state'] );
-		self::assertSame( Authorization::MANAGE_CAPABILITY, $definitions['snippets']['capability'] );
-		self::assertTrue( is_subclass_of( ModuleState::class, ModuleStateInterface::class ) );
-		self::assertSame( State::is_enabled(), ModuleState::is_enabled() );
+		try {
+			if ( $initial ) {
+				State::set_enabled( false, 'test:single-lifecycle-precondition' );
+			}
+			self::assertFalse( State::is_enabled() );
+
+			Bootstrap::activate();
+
+			self::assertTrue( State::is_enabled() );
+			self::assertFileExists( \CoreBlueprint\Snippets\Paths::runtime_index() );
+
+			$bootstrap = (string) file_get_contents( CB_SNIPPETS_DIR . 'src/Bootstrap.php' );
+			self::assertStringNotContainsString( 'core_blueprint_module_activation_definitions', $bootstrap );
+			self::assertStringNotContainsString( 'register_activation_definition', $bootstrap );
+		} finally {
+			if ( State::is_enabled() !== $initial ) {
+				State::set_enabled( $initial, 'test:single-lifecycle-restore' );
+			}
+		}
 	}
 
 	public function test_module_status_definition_is_extension_owned(): void {
@@ -56,5 +68,6 @@ final class CB_Snippets_Extension_Ownership_Contract_Test extends WP_UnitTestCas
 		self::assertStringContainsString( 'Requires Plugins:  core-blueprint', $plugin );
 		self::assertStringContainsString( "\\\\CoreBlueprint\\\\Core\\\\Snippets\\\\Bootstrap", $bootstrap );
 		self::assertStringContainsString( "Bootstrap::class, 'boot' ], 0", $plugin );
+		self::assertStringContainsString( "Bootstrap::class, 'activate' ]", $plugin );
 	}
 }
