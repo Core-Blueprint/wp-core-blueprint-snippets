@@ -27,8 +27,9 @@ $bootstrap = $root . '/src/Bootstrap.php';
 $paths = $root . '/src/Paths.php';
 $settings = $root . '/src/Settings.php';
 $actions = $root . '/src/Admin/Actions.php';
+$settings_page = $root . '/src/Admin/SettingsPage.php';
 $uninstall = $root . '/uninstall.php';
-foreach ( [ $plugin, $bootstrap, $paths, $settings, $actions, $uninstall ] as $required ) {
+foreach ( [ $plugin, $bootstrap, $paths, $settings, $actions, $settings_page, $uninstall ] as $required ) {
 	if ( ! is_file( $required ) ) {
 		fail_snippets_contract( "required file missing: {$required}" );
 	}
@@ -46,7 +47,15 @@ require_contains( $bootstrap, "State::set_enabled( true, 'plugin:activation' )" 
 require_not_contains( $bootstrap, 'core_blueprint_module_activation_definitions' );
 require_not_contains( $bootstrap, 'register_activation_definition' );
 require_contains( $bootstrap, "PageRegistry::register(" );
+require_contains( $bootstrap, 'SettingsPage::init();' );
 require_not_contains( $bootstrap, 'register_base(' );
+
+require_contains( $settings_page, "add_action( 'core_blueprint_register_settings'" );
+require_contains( $settings_page, 'SettingsRegistry::register(' );
+require_contains( $settings_page, "SettingsRegistry::GROUP_INFRASTRUCTURE" );
+require_contains( $settings_page, "Authorization::MANAGE_CAPABILITY" );
+require_contains( $settings_page, "admin.php?page=' . Page::SLUG" );
+require_not_contains( $settings_page, 'cb_core_register_settings' );
 
 require_contains( $paths, "WP_CONTENT_DIR ) . 'cb-snippets'" );
 require_contains( $settings, "public const OPTION = 'cb_core_snippets_settings'" );
