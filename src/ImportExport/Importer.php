@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace CoreBlueprint\Core\Snippets\ImportExport;
+namespace CoreBlueprint\Snippets\ImportExport;
 
-use CoreBlueprint\Core\Snippets\Repository;
-use CoreBlueprint\Core\Snippets\Schema;
+use CoreBlueprint\Snippets\Repository;
+use CoreBlueprint\Snippets\Schema;
 
 defined( 'ABSPATH' ) || exit;
 

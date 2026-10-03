@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace CoreBlueprint\Core\Snippets\Admin;
+namespace CoreBlueprint\Snippets\Admin;
 
 use CoreBlueprint\Core\Admin\MutationAcknowledgement;
 use CoreBlueprint\Core\Admin\Page as PageContract;
 use CoreBlueprint\Core\Admin\TabNav;
-use CoreBlueprint\Core\Snippets\Authorization;
-use CoreBlueprint\Core\Snippets\ConflictDetector;
-use CoreBlueprint\Core\Snippets\Repository;
-use CoreBlueprint\Core\Snippets\SafeMode;
-use CoreBlueprint\Core\Snippets\Schema;
-use CoreBlueprint\Core\Snippets\State;
+use CoreBlueprint\Snippets\Authorization;
+use CoreBlueprint\Snippets\ConflictDetector;
+use CoreBlueprint\Snippets\Repository;
+use CoreBlueprint\Snippets\SafeMode;
+use CoreBlueprint\Snippets\Schema;
+use CoreBlueprint\Snippets\State;
 use CoreBlueprint\Core\UI\Status as StatusUi;
 
 defined( 'ABSPATH' ) || exit;
@@ -268,7 +268,7 @@ final class Page implements PageContract {
 					<div><span><?php esc_html_e( 'Runtime index', 'core-blueprint-snippets' ); ?></span><?php echo StatusUi::render( $health['index'] ? 'active' : 'error', $health['index'] ? __( 'Healthy', 'core-blueprint-snippets' ) : __( 'Invalid', 'core-blueprint-snippets' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 					<div><span><?php esc_html_e( 'Code files', 'core-blueprint-snippets' ); ?></span><?php echo StatusUi::render( $health['code'] ? 'active' : 'error', $health['code'] ? __( 'Verified', 'core-blueprint-snippets' ) : __( 'Changed or missing', 'core-blueprint-snippets' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 				</div>
-				<p class="description"><code><?php echo esc_html( \CoreBlueprint\Core\Snippets\Paths::base_dir() ); ?></code></p>
+				<p class="description"><code><?php echo esc_html( \CoreBlueprint\Snippets\Paths::base_dir() ); ?></code></p>
 			</section>
 
 			<section class="cb-snippets-section">

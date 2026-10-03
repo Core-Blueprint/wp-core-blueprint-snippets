@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace CoreBlueprint\Core\Snippets\ImportExport;
+namespace CoreBlueprint\Snippets\ImportExport;
 
-use CoreBlueprint\Core\Snippets\Repository;
+use CoreBlueprint\Snippets\Repository;
 
 defined( 'ABSPATH' ) || exit;
 

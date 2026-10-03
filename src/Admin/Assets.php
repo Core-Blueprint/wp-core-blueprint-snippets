@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace CoreBlueprint\Core\Snippets\Admin;
+namespace CoreBlueprint\Snippets\Admin;
 
 use CoreBlueprint\Core\Admin\PageRegistry;
-use CoreBlueprint\Core\Snippets\Schema;
+use CoreBlueprint\Snippets\Schema;
 
 defined( 'ABSPATH' ) || exit;
 

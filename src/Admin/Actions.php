@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace CoreBlueprint\Core\Snippets\Admin;
+namespace CoreBlueprint\Snippets\Admin;
 
 use CoreBlueprint\Core\Admin\MutationAcknowledgement;
 use CoreBlueprint\Core\Log\AuditLog;
-use CoreBlueprint\Core\Snippets\ImportExport\Exporter;
-use CoreBlueprint\Core\Snippets\ImportExport\Importer;
-use CoreBlueprint\Core\Snippets\Authorization;
-use CoreBlueprint\Core\Snippets\Repository;
-use CoreBlueprint\Core\Snippets\State;
+use CoreBlueprint\Snippets\ImportExport\Exporter;
+use CoreBlueprint\Snippets\ImportExport\Importer;
+use CoreBlueprint\Snippets\Authorization;
+use CoreBlueprint\Snippets\Repository;
+use CoreBlueprint\Snippets\State;
 
 defined( 'ABSPATH' ) || exit;
 
