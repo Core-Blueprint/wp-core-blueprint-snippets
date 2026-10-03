@@ -50,7 +50,7 @@ final class CB_Snippets_Extension_Ownership_Contract_Test extends WP_UnitTestCas
 		self::assertStringContainsString( 'CB_SNIPPETS_VERSION', $assets );
 		self::assertStringNotContainsString( 'CB_CORE_URL', $assets );
 		self::assertStringContainsString( 'Requires Plugins:  core-blueprint', $plugin );
-		self::assertStringContainsString( 'CoreBlueprint\\Core\\Snippets\\Bootstrap', $bootstrap );
+		self::assertStringContainsString( "\\\\CoreBlueprint\\\\Core\\\\Snippets\\\\Bootstrap", $bootstrap );
 		self::assertStringContainsString( "Bootstrap::class, 'boot' ], 0", $plugin );
 	}
 }
