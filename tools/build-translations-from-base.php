@@ -137,7 +137,9 @@ function source_messages( string $root, string $domain, array $functions ): arra
 }
 
 function php_export_file( array $catalog ): string {
-	return "<?php\ndeclare(strict_types=1);\n\ndefined( 'ABSPATH' ) || exit;\n\nreturn " . var_export( $catalog, true ) . ";\n";
+	$export = var_export( $catalog, true );
+	$export = preg_replace( '/[ \\t]+$/m', '', $export ) ?? $export;
+	return "<?php\ndeclare(strict_types=1);\n\ndefined( 'ABSPATH' ) || exit;\n\nreturn " . $export . ";\n";
 }
 
 $source = source_messages( $root, $domain, $functions );
@@ -147,15 +149,37 @@ if ( [] === $source ) {
 }
 
 @mkdir( $root . '/languages', 0777, true );
+$base_ref = getenv( 'CB_BASE_TRANSLATION_REF' );
+if ( ! is_string( $base_ref ) || '' === trim( $base_ref ) ) {
+	$base_ref = 'origin/main';
+}
+
 foreach ( $locales as $locale ) {
-	$base_file = $base . '/languages/core-blueprint-' . $locale . '.l10n.php';
-	if ( ! is_file( $base_file ) ) {
-		fwrite( STDERR, "[translations] ERROR: missing Base catalog {$base_file}.\n" );
+	$relative = 'languages/base/core-blueprint-' . $locale . '.php';
+	$command = sprintf(
+		'git -C %s show %s:%s',
+		escapeshellarg( $base ),
+		escapeshellarg( $base_ref ),
+		escapeshellarg( $relative )
+	);
+	$payload = shell_exec( $command );
+	if ( ! is_string( $payload ) || '' === trim( $payload ) ) {
+		fwrite( STDERR, "[translations] ERROR: could not read {$relative} from Base ref {$base_ref}.\n" );
 		exit( 1 );
 	}
-	$base_catalog = require $base_file;
+
+	$temp = tempnam( sys_get_temp_dir(), 'cb-snippets-i18n-' );
+	if ( false === $temp || false === file_put_contents( $temp, $payload ) ) {
+		fwrite( STDERR, "[translations] ERROR: could not materialize Base catalog {$locale}.\n" );
+		exit( 1 );
+	}
+	try {
+		$base_catalog = require $temp;
+	} finally {
+		@unlink( $temp );
+	}
 	if ( ! is_array( $base_catalog ) || ! is_array( $base_catalog['messages'] ?? null ) ) {
-		fwrite( STDERR, "[translations] ERROR: invalid Base catalog {$locale}.\n" );
+		fwrite( STDERR, "[translations] ERROR: invalid Base catalog {$locale} at {$base_ref}.\n" );
 		exit( 1 );
 	}
 
