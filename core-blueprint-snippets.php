@@ -43,10 +43,6 @@ spl_autoload_register( static function ( string $class ): void {
 	}
 } );
 
-register_activation_hook( __FILE__, static function (): void {
-	if ( class_exists( '\\CoreBlueprint\\Snippets\\Repository' ) ) {
-		\CoreBlueprint\Snippets\Repository::rebuild_index();
-	}
-} );
+register_activation_hook( __FILE__, [ \CoreBlueprint\Snippets\Bootstrap::class, 'activate' ] );
 
 add_action( 'plugins_loaded', [ \CoreBlueprint\Snippets\Bootstrap::class, 'boot' ], 0 );
