@@ -21,6 +21,22 @@ final class Bootstrap {
 		}
 		self::$booted = true;
 
+		if (
+			! defined( 'CB_CORE_VERSION' )
+			|| ! defined( 'CB_CORE_API_VERSION' )
+			|| version_compare( (string) CB_CORE_API_VERSION, '1.2', '<' )
+			|| ! class_exists( '\\CoreBlueprint\\Core\\ExtensionRegistry' )
+		) {
+			self::dependency_notice();
+			return;
+		}
+
+		// A pre-extraction Base may still own the embedded runtime. Never run both.
+		if ( class_exists( '\\CoreBlueprint\\Core\\Snippets\\Bootstrap' ) ) {
+			self::legacy_base_notice();
+			return;
+		}
+
 		// Runtime registration stays synchronous so enabled PHP snippets may
 		// intentionally target plugins_loaded, matching the embedded Base runtime.
 		Runtime::boot();
@@ -55,7 +71,7 @@ final class Bootstrap {
 
 	public static function register_activation_definition( array $definitions ): array {
 		$definitions['snippets'] = [
-			'state'      => State::class,
+			'state'      => ModuleState::class,
 			'capability' => Authorization::MANAGE_CAPABILITY,
 		];
 		return $definitions;
@@ -150,6 +166,28 @@ final class Bootstrap {
 
 	public static function register_capability_filter(): void {
 		add_filter( 'core_blueprint_capability_catalog', [ self::class, 'register_capability' ] );
+	}
+
+	private static function dependency_notice(): void {
+		add_action( 'admin_notices', static function (): void {
+			if ( ! current_user_can( 'activate_plugins' ) ) {
+				return;
+			}
+			echo '<div class="notice notice-error"><p>';
+			echo esc_html__( 'Core Blueprint Snippets requires Core Blueprint Base with Distribution API 1.2 or newer.', 'core-blueprint-snippets' );
+			echo '</p></div>';
+		} );
+	}
+
+	private static function legacy_base_notice(): void {
+		add_action( 'admin_notices', static function (): void {
+			if ( ! current_user_can( 'activate_plugins' ) ) {
+				return;
+			}
+			echo '<div class="notice notice-info"><p>';
+			echo esc_html__( 'Core Blueprint Snippets is installed and waiting for the Core Blueprint Base update that removes the embedded Snippets runtime.', 'core-blueprint-snippets' );
+			echo '</p></div>';
+		} );
 	}
 
 	public static function register_capability( array $catalog ): array {

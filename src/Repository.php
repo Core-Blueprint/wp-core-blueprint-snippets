@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace CoreBlueprint\Snippets;
 
-use CoreBlueprint\Core\Log\AuditLog;
 use CoreBlueprint\Snippets\Validation\PhpValidator;
 
 defined( 'ABSPATH' ) || exit;
@@ -230,7 +229,7 @@ final class Repository {
 				IndexBuilder::rebuild_from_registry( $registry, State::is_enabled() );
 			} );
 
-			AuditLog::log( 'snippet_auto_disabled', 'warning', [
+			Audit::log( 'snippet_auto_disabled', 'warning', [
 				'snippet_id' => $id,
 				'error'      => sanitize_text_field( (string) ( $error['message'] ?? 'Runtime error' ) ),
 			] );

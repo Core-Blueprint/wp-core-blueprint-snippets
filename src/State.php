@@ -13,12 +13,9 @@ declare(strict_types=1);
 
 namespace CoreBlueprint\Snippets;
 
-use CoreBlueprint\Core\Log\AuditLog;
-use CoreBlueprint\Core\Modules\ModuleStateInterface;
-
 \defined( 'ABSPATH' ) || exit;
 
-final class State implements ModuleStateInterface {
+final class State {
 	public static function is_enabled(): bool {
 		return ! empty( Settings::all()['enabled'] );
 	}
@@ -50,12 +47,10 @@ final class State implements ModuleStateInterface {
 			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
-		if ( class_exists( AuditLog::class ) ) {
-			AuditLog::log(
+		Audit::log(
 				$enabled ? 'snippets_subsystem_enabled' : 'snippets_subsystem_disabled',
 				'notice',
 				[ 'actor' => $actor ]
-			);
-		}
+		);
 	}
 }
