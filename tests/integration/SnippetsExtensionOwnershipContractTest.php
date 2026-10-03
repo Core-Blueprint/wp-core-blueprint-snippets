@@ -39,6 +39,10 @@ final class CB_Snippets_Extension_Ownership_Contract_Test extends WP_UnitTestCas
 		$bootstrap = (string) file_get_contents( CB_SNIPPETS_DIR . 'src/Bootstrap.php' );
 		self::assertStringContainsString( 'PageRegistry::register(', $bootstrap );
 		self::assertStringNotContainsString( 'PageRegistry::register_base(', $bootstrap );
+		self::assertMatchesRegularExpression(
+			'/public static function register_page\(\): void \{\s*PageRegistry::register\(/',
+			$bootstrap
+		);
 	}
 
 	public function test_extension_owns_assets_and_staged_upgrade_guard(): void {
