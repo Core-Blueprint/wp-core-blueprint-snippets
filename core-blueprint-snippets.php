@@ -49,4 +49,4 @@ register_activation_hook( __FILE__, static function (): void {
 	}
 } );
 
-add_action( 'plugins_loaded', [ \\CoreBlueprint\\Snippets\\Bootstrap::class, 'boot' ], 0 );
+add_action( 'plugins_loaded', [ \CoreBlueprint\Snippets\Bootstrap::class, 'boot' ], 0 );
