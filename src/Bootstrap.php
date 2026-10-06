@@ -103,7 +103,7 @@ final class Bootstrap {
 			new Page(),
 			[
 				'foundations' => [ 'modal' ],
-				'components'  => [ 'actions', 'buttons', 'fields', 'form-controls', 'nav-tabs', 'notices', 'panels', 'state-badges', 'status' ],
+				'components'  => [ 'buttons', 'fields', 'form-controls', 'nav-tabs', 'notices', 'panels', 'state-badges', 'status' ],
 			]
 		);
 	}
