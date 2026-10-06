@@ -247,7 +247,7 @@ final class Page implements PageContract {
 				<textarea id="cb-snippet-code" name="code" rows="24" spellcheck="false"><?php echo esc_textarea( $code ); ?></textarea>
 			</section>
 
-			<div class="cb-core-actions">
+			<div class="cb-snippets-actions">
 				<?php if ( State::is_enabled() && Authorization::can_mutate() ) : ?>
 					<button type="submit" class="button button-primary cb-core-button cb-core-button--primary"><?php esc_html_e( 'Save snippet', 'core-blueprint-snippets' ); ?></button>
 				<?php endif; ?>
