@@ -241,3 +241,11 @@ html[data-cb-theme="dark"] .cb-snippets-code-section .CodeMirror-cursor {
 		flex-direction: column;
 	}
 }
+
+.cb-snippets-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--cb-space-3);
+	margin-top: var(--cb-space-3);
+}
